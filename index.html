@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>J.A.R.V.I.S. // Núcleo Operativo Real & Biometría</title>
-    <!-- Icono vectorial oficial para la pestaña del navegador -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23030811' stroke='%2300f3ff' stroke-width='8'/><circle cx='50' cy='50' r='20' fill='%23ffaa00' stroke='%2300f3ff' stroke-width='4'/></svg>">
     <style>
         :root {
@@ -34,7 +33,6 @@
         }
         h1 { font-size: 1.05rem; letter-spacing: 2px; text-shadow: var(--text-glow); }
 
-        /* Pantalla de Calibración de las 3 Pruebas */
         #registrationScreen {
             position: fixed;
             inset: 0;
@@ -85,7 +83,6 @@
         .test-step { font-size: 0.78rem; color: var(--active-gold); margin-bottom: 4px; font-weight: bold; }
         .test-desc { font-size: 0.72rem; color: #ccc; margin-bottom: 6px; }
 
-        /* Interfaz Principal */
         .panel-info {
             padding: 8px 20px;
             background: rgba(0, 243, 255, 0.04);
@@ -140,7 +137,6 @@
         }
         .message.jarvis { align-self: flex-start; }
 
-        /* AVATAR CON TU IMAGEN REAL EN ESQUINA INFERIOR IZQUIERDA */
         .avatar-hud {
             position: fixed;
             bottom: 75px;
@@ -232,7 +228,6 @@
 </head>
 <body>
 
-    <!-- PANTALLA DE LAS 3 PRUEBAS DE VOZ EXCLUSIVAS DEL JEFE -->
     <div id="registrationScreen">
         <div class="reg-card">
             <h2>CALIBRACIÓN BIOMÉTRICA (3 PRUEBAS)</h2>
@@ -256,7 +251,6 @@
         </div>
     </div>
 
-    <!-- INTERFAZ PRINCIPAL -->
     <header>
         <h1>J.A.R.V.I.S. // CONTROL REAL & KNOWLEDGE BASE</h1>
         <button class="btn-sync" onclick="backupToEmail()">✉️ RESPALDAR EN CORREO</button>
@@ -274,7 +268,6 @@
 
     <div class="chat-container" id="chatContainer"></div>
 
-    <!-- AVATAR CON TU IMAGEN REAL -->
     <div id="jarvisAvatar" class="avatar-hud">
         <div class="avatar-img-wrapper">
             <img src="WhatsApp Image 2026-11-26 at 12.55.23 PM.jpeg" alt="Avatar J.A.R.V.I.S." id="avatarPic">
@@ -306,8 +299,8 @@
             loadDashboard();
         }
 
-        // Sistema robusto de las 3 Pruebas de Voz con manejo de errores y permisos
-        function runVoiceTest() {
+        // Función de inicialización forzada de audio previa al reconocimiento
+        async function runVoiceTest() {
             const nameInput = document.getElementById('regName').value.trim();
             const emailInput = document.getElementById('regEmail').value.trim();
             const testStatus = document.getElementById('testStatus');
@@ -317,15 +310,20 @@
                 return;
             }
 
-            testStatus.innerText = `Iniciando Prueba ${currentTestStep}... Hable claro.`;
-
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                testStatus.innerText = "Error: Su navegador no soporta reconocimiento de voz.";
-                return;
-            }
+            testStatus.innerText = "Solicitando acceso al hardware de audio...";
 
             try {
+                // Forzar el stream de medios primero para que el navegador enganche el micrófono con éxito
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Liberar el stream inmediatamente para que la API de reconocimiento pueda tomarlo
+                stream.getTracks().forEach(track => track.stop());
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    testStatus.innerText = "Error: Su navegador no soporta reconocimiento de voz.";
+                    return;
+                }
+
                 const tester = new SpeechRecognition();
                 tester.lang = 'es-ES';
                 tester.interimResults = false;
@@ -357,16 +355,13 @@
 
                 tester.onerror = function(event) {
                     console.error("Error de voz:", event.error);
-                    if (event.error === 'not-allowed') {
-                        testStatus.innerText = "Error: Permiso de micrófono denegado en el navegador.";
-                    } else {
-                        testStatus.innerText = "Error en la captura. Verifique permisos del micrófono.";
-                    }
+                    testStatus.innerText = `Aviso de captura (${event.error}). Vuelva a presionar el botón.`;
                 };
 
                 tester.start();
             } catch (err) {
-                testStatus.innerText = "Error al iniciar el reconocimiento local.";
+                console.error(err);
+                testStatus.innerText = "Error: El navegador bloqueó el micrófono. Verifique los permisos en el icono superior.";
             }
         }
 
@@ -507,7 +502,6 @@
             processRealControlCommand(text);
         }
 
-        // Lógica de control y base enciclopédica multilenguaje
         function processRealControlCommand(command) {
             appendMessage('user', command);
             setTimeout(() => {
@@ -517,7 +511,6 @@
 
                 if (lower.match(/\b(hello|hi|status|time|what|who)\b/)) responseLang = 'en-US';
 
-                // MÓDULOS DE CONTROL DE HARDWARE REAL
                 if (lower.includes("subir volumen") || lower.includes("aumentar volumen")) {
                     reply = `Incrementando canales de audio en su dispositivo, Jefe ${bossData.name}. Niveles óptimos alcanzados.`;
                 } else if (lower.includes("bajar volumen") || lower.includes("silenciar")) {
@@ -533,7 +526,6 @@
                 } else if (lower.includes("quién eres") || lower.includes("protocolo")) {
                     reply = `Soy J.A.R.V.I.S., su interfaz de inteligencia artificial avanzada, diseñada para gestionar sus equipos, analizar datos complejos y proteger sus protocolos con autoridad exclusiva, Jefe.`;
                 } else {
-                    // BASE DE CONOCIMIENTO TÉCNICO Y CIENTÍFICO AMPLIO
                     reply = `Consulta procesada en el banco central de datos, Jefe ${bossData.name}. Analizando parámetros científicos, de física, ingeniería, telemática o cultura pop solicitados sobre "${command}". Todo bajo control absoluto en sus dispositivos.`;
                 }
 
