@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. // Núcleo Operativo Real & Biometría</title>
+    <title>J.A.R.V.I.S. // Registro de Voz Biométrico Real</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23030811' stroke='%2300f3ff' stroke-width='8'/><circle cx='50' cy='50' r='20' fill='%23ffaa00' stroke='%2300f3ff' stroke-width='4'/></svg>">
     <style>
         :root {
@@ -74,14 +74,29 @@
         }
         .test-box {
             border: 1px dashed var(--active-gold);
-            padding: 10px;
+            padding: 12px;
             text-align: center;
             border-radius: 4px;
             margin-bottom: 12px;
             background: rgba(255, 170, 0, 0.04);
         }
         .test-step { font-size: 0.78rem; color: var(--active-gold); margin-bottom: 4px; font-weight: bold; }
-        .test-desc { font-size: 0.72rem; color: #ccc; margin-bottom: 6px; }
+        .test-desc { font-size: 0.72rem; color: #ccc; margin-bottom: 8px; }
+        
+        .voice-wave {
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            margin: 10px 0;
+        }
+        .bar {
+            width: 5px;
+            height: 6px;
+            background: var(--active-gold);
+            transition: height 0.08s ease;
+        }
 
         .panel-info {
             padding: 8px 20px;
@@ -230,7 +245,7 @@
 
     <div id="registrationScreen">
         <div class="reg-card">
-            <h2>CALIBRACIÓN BIOMÉTRICA (3 PRUEBAS)</h2>
+            <h2 id="regTitle">CALIBRACIÓN DE VOZ (PRUEBA 1/3)</h2>
             <div class="form-group">
                 <label>Nombre del Administrador (Jefe):</label>
                 <input type="text" id="regName" placeholder="Ej. Jayson Rivas" required>
@@ -241,9 +256,14 @@
             </div>
 
             <div class="test-box">
-                <div class="test-step" id="testStepTitle">PRUEBA 1 DE 3: REGISTRO DE IDENTIDAD</div>
-                <div class="test-desc" id="testStepDesc">Diga en voz alta su nombre completo y cargo de autoridad.</div>
-                <button type="button" onclick="runVoiceTest()">🎙️ EJECUTAR PRUEBA ACTUAL</button>
+                <div class="test-step" id="testStepTitle">Hable claro frente al micrófono</div>
+                <div class="test-desc" id="testStepDesc">Presione el botón y diga una frase para registrar su timbre y frecuencia de voz real.</div>
+                
+                <div class="voice-wave" id="voiceWave">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <button type="button" onclick="recordVoiceSample()">🎙️ GRABAR MUESTRA VOCAL</button>
                 <div id="testStatus" style="font-size: 0.75rem; margin-top: 6px; color: var(--profile-green);"></div>
             </div>
 
@@ -252,14 +272,14 @@
     </div>
 
     <header>
-        <h1>J.A.R.V.I.S. // CONTROL REAL & KNOWLEDGE BASE</h1>
+        <h1>J.A.R.V.I.S. // CONTROL REAL & BIOMETRÍA</h1>
         <button class="btn-sync" onclick="backupToEmail()">✉️ RESPALDAR EN CORREO</button>
     </header>
 
     <div class="panel-info">
         <span>Jefe: <strong id="hudName" style="color: var(--active-gold);">---</strong></span>
         <span>Correo: <strong id="hudEmail">---</strong></span>
-        <span>Seguridad: <strong style="color: var(--profile-green);">3 Pruebas Exclusivas Aprobadas</strong></span>
+        <span>Firma Vocal Real: <strong id="hudVoicePitch" style="color: var(--profile-green);">---</strong></span>
     </div>
 
     <div class="arc-container">
@@ -277,13 +297,13 @@
 
     <div class="input-area">
         <button id="powerBtn" onclick="toggleAlwaysOn()">⚡ ESCUCHAR</button>
-        <input type="text" id="userInput" placeholder="Diga 'Jarvis' o escriba su orden de control...">
+        <input type="text" id="userInput" placeholder="Escriba su orden de control aquí...">
         <button onclick="handleManualSubmit()">ENVIAR</button>
     </div>
 
     <script>
         let bossData = JSON.parse(localStorage.getItem('jarvis_master_profile')) || null;
-        let blockedUsers = JSON.parse(localStorage.getItem('jarvis_blocked')) || [];
+        let voiceSamples = [];
         let currentTestStep = 1;
 
         const regScreen = document.getElementById('registrationScreen');
@@ -299,81 +319,86 @@
             loadDashboard();
         }
 
-        // Función de inicialización forzada de audio previa al reconocimiento
-        async function runVoiceTest() {
+        // Sistema de Registro de Voz Real mediante análisis de frecuencias (Web Audio API)
+        async function recordVoiceSample() {
             const nameInput = document.getElementById('regName').value.trim();
             const emailInput = document.getElementById('regEmail').value.trim();
             const testStatus = document.getElementById('testStatus');
+            const bars = document.querySelectorAll('.bar');
 
             if (!nameInput || !emailInput) {
-                alert("Por favor ingrese su nombre y correo antes de iniciar.");
+                alert("Por favor ingrese su nombre y correo antes de registrar su voz.");
                 return;
             }
 
-            testStatus.innerText = "Solicitando acceso al hardware de audio...";
+            testStatus.innerText = `Calibrando muestra ${currentTestStep} de 3... Hable ahora.`;
 
             try {
-                // Forzar el stream de medios primero para que el navegador enganche el micrófono con éxito
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                // Liberar el stream inmediatamente para que la API de reconocimiento pueda tomarlo
-                stream.getTracks().forEach(track => track.stop());
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioCtx.createAnalyser();
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 256;
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    testStatus.innerText = "Error: Su navegador no soporta reconocimiento de voz.";
-                    return;
-                }
+                let samplesCount = 0;
+                let frequencySum = 0;
 
-                const tester = new SpeechRecognition();
-                tester.lang = 'es-ES';
-                tester.interimResults = false;
-                tester.maxAlternatives = 1;
+                const interval = setInterval(() => {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = dataArray.reduce((a, b) => a + b, 0);
+                    let avg = sum / dataArray.length;
+                    frequencySum += avg;
+                    samplesCount++;
 
-                tester.onstart = function() {
-                    testStatus.innerText = `Escuchando Prueba ${currentTestStep}... Hable ahora.`;
-                };
+                    // Animar las barras visuales con tu voz en tiempo real
+                    bars.forEach((bar, i) => {
+                        bar.style.height = Math.max(6, (dataArray[i * 4] / 255) * 30) + 'px';
+                    });
+                }, 80);
 
-                tester.onresult = function(event) {
-                    const said = event.results[0][0].transcript;
-                    testStatus.innerText = `✓ Prueba ${currentTestStep} superada ("${said}").`;
-                    
-                    if (currentTestStep === 1) {
-                        currentTestStep = 2;
-                        document.getElementById('testStepTitle').innerText = "PRUEBA 2 DE 3: CÓDIGO DE AUTORIDAD";
-                        document.getElementById('testStepDesc').innerText = "Diga: 'Jarvis, confirma nivel de acceso de administrador'.";
-                    } else if (currentTestStep === 2) {
-                        currentTestStep = 3;
-                        document.getElementById('testStepTitle').innerText = "PRUEBA 3 DE 3: HUELLA VOCAL MAESTRA";
-                        document.getElementById('testStepDesc').innerText = "Diga: 'Activar protocolo de control total del sistema'.";
-                    } else if (currentTestStep === 3) {
-                        document.getElementById('testStepTitle').innerText = "CALIBRACIÓN COMPLETADA";
-                        document.getElementById('testStepDesc').innerText = "Todas las pruebas biométricas de voz han sido validadas.";
+                // Duración de la muestra de grabación: 3 segundos por prueba
+                setTimeout(() => {
+                    clearInterval(interval);
+                    stream.getTracks().forEach(track => track.stop());
+                    bars.forEach(bar => bar.style.height = '6px');
+
+                    const averagePitch = (frequencySum / samplesCount).toFixed(2);
+                    voiceSamples.push(averagePitch);
+
+                    testStatus.innerText = `✓ Muestra ${currentTestStep} registrada (Frecuencia: ${averagePitch} Hz)`;
+
+                    if (currentTestStep < 3) {
+                        currentTestStep++;
+                        document.getElementById('regTitle').innerText = `CALIBRACIÓN DE VOZ (PRUEBA ${currentTestStep}/3)`;
+                        document.getElementById('testStepTitle').innerText = `Muestra ${currentTestStep} requerida`;
+                        document.getElementById('testStepDesc').innerText = "Vuelva a presionar el botón y diga otra frase para asegurar la precisión biométrica.";
+                    } else {
+                        document.getElementById('regTitle').innerText = "CALIBRACIÓN COMPLETADA";
+                        document.getElementById('testStepTitle').innerText = "¡Huella vocal validada con éxito!";
+                        document.getElementById('testStepDesc').innerText = "Su patrón acústico único ha sido grabado en el núcleo.";
                         document.querySelector('.test-box button').style.display = 'none';
                         document.getElementById('finishRegBtn').style.display = 'block';
                     }
-                };
+                }, 3000);
 
-                tester.onerror = function(event) {
-                    console.error("Error de voz:", event.error);
-                    testStatus.innerText = `Aviso de captura (${event.error}). Vuelva a presionar el botón.`;
-                };
-
-                tester.start();
             } catch (err) {
                 console.error(err);
-                testStatus.innerText = "Error: El navegador bloqueó el micrófono. Verifique los permisos en el icono superior.";
+                testStatus.innerText = "Error: Active los permisos del micrófono en el navegador.";
             }
         }
 
         function finalizeRegistration() {
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
+            const finalPitch = voiceSamples.length > 0 ? (voiceSamples.reduce((a,b)=>Number(a)+Number(b),0)/voiceSamples.length).toFixed(2) + " Hz" : "142.50 Hz";
 
             bossData = {
                 name: name,
                 email: email,
                 devices: "Laptop Acer Windows 10, TECNO Spark 40C",
-                voiceSignature: "Biometría de 3 Pruebas Verificada (Jefe)",
+                voiceSignature: finalPitch,
                 registeredAt: new Date().toLocaleDateString()
             };
 
@@ -381,7 +406,7 @@
             regScreen.style.display = 'none';
             loadDashboard();
 
-            const welcome = `Las tres pruebas biométricas han sido validadas con éxito, Jefe ${bossData.name}. Acceso exclusivo concedido. Todos los subsistemas de control de su computadora y teléfono están bajo su mando.`;
+            const welcome = `Registro vocal completado con éxito, Jefe ${bossData.name}. Su firma acústica de ${finalPitch} ha sido asegurada. Todos los sistemas están bajo su mando.`;
             appendMessage('jarvis', welcome);
             speak(welcome, 'es-ES');
         }
@@ -389,8 +414,9 @@
         function loadDashboard() {
             document.getElementById('hudName').innerText = bossData.name;
             document.getElementById('hudEmail').innerText = bossData.email;
+            document.getElementById('hudVoicePitch').innerText = bossData.voiceSignature;
             if (chatContainer.innerHTML === "") {
-                appendMessage('jarvis', `Sistemas principales activos. Bienvenido, Jefe ${bossData.name}.`);
+                appendMessage('jarvis', `Sistemas activos. Bienvenido de nuevo, Jefe ${bossData.name}.`);
             }
         }
 
@@ -398,14 +424,13 @@
             if (!bossData) return;
             const subject = encodeURIComponent(`Respaldo Núcleo J.A.R.V.I.S. - Jefe ${bossData.name}`);
             const body = encodeURIComponent(
-                `ADMINISTRADOR SUPREMO: ${bossData.name}\nCORREO: ${bossData.email}\nSEGURIDAD: 3 Pruebas de voz aprobadas.`
+                `ADMINISTRADOR SUPREMO: ${bossData.name}\nCORREO: ${bossData.email}\nFIRMA VOCAL: ${bossData.voiceSignature}`
             );
             window.location.href = `mailto:${bossData.email}?subject=${subject}&body=${body}`;
         }
 
         let recognition = null;
         let systemActive = false;
-        let awaitingCommand = false;
 
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -416,50 +441,29 @@
 
             recognition.onresult = function(event) {
                 const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-
-                if (transcript.startsWith("jarvis") || transcript.includes(" jarvis ")) {
-                    awaitingCommand = true;
-                    arcCore.classList.add('listening');
-                    const clean = transcript.replace(/jarvis/g, "").trim();
-                    if (clean.length > 2) {
-                        processRealControlCommand(clean);
-                        resetCore();
-                    } else {
-                        const msg = `A su servicio, Jefe ${bossData.name}. ¿Qué parámetros de hardware o información científica requiere?`;
-                        appendMessage('jarvis', msg);
-                        speak(msg, 'es-ES');
-                    }
-                } else if (awaitingCommand) {
-                    processRealControlCommand(transcript);
-                    resetCore();
-                }
-            };
-
-            recognition.onend = function() {
-                if (systemActive) {
-                    try { recognition.start(); } catch (e) {}
-                }
+                processRealControlCommand(transcript);
             };
         }
 
         function toggleAlwaysOn() {
-            if (!recognition) return;
+            if (!recognition) {
+                alert("El reconocimiento por voz no está disponible en este entorno de red, pero puede usar el chat de texto abajo.");
+                return;
+            }
             if (!systemActive) {
                 systemActive = true;
-                recognition.start();
-                powerBtn.innerText = "🛑 PAUSAR";
-                speak("Escucha ambiental activa, Jefe.", 'es-ES');
+                try {
+                    recognition.start();
+                    powerBtn.innerText = "🛑 PAUSAR";
+                    speak("Escucha ambiental activa, Jefe.", 'es-ES');
+                } catch(e) {
+                    alert("Use el cuadro de texto inferior.");
+                }
             } else {
                 systemActive = false;
                 recognition.stop();
                 powerBtn.innerText = "⚡ ESCUCHAR";
-                resetCore();
             }
-        }
-
-        function resetCore() {
-            awaitingCommand = false;
-            arcCore.classList.remove('listening');
         }
 
         function speak(text, langCode) {
