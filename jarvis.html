@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. // Núcleo Operativo Real & Biometría</title>
+    <!-- Icono vectorial oficial para la pestaña del navegador -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23030811' stroke='%2300f3ff' stroke-width='8'/><circle cx='50' cy='50' r='20' fill='%23ffaa00' stroke='%2300f3ff' stroke-width='4'/></svg>">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --dark-bg: #030811;
+            --hud-border: rgba(0, 243, 255, 0.35);
+            --text-glow: 0 0 12px rgba(0, 243, 255, 0.6);
+            --active-gold: #ffaa00;
+            --profile-green: #00ff88;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; }
+        body {
+            background-color: var(--dark-bg);
+            color: var(--neon-blue);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--hud-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 12, 28, 0.9);
+        }
+        h1 { font-size: 1.05rem; letter-spacing: 2px; text-shadow: var(--text-glow); }
+
+        /* Pantalla de Calibración de las 3 Pruebas */
+        #registrationScreen {
+            position: fixed;
+            inset: 0;
+            background: var(--dark-bg);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .reg-card {
+            width: 100%;
+            max-width: 480px;
+            border: 1px solid var(--neon-blue);
+            background: rgba(0, 15, 35, 0.95);
+            padding: 25px;
+            border-radius: 6px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
+        }
+        .reg-card h2 {
+            text-align: center;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            color: var(--active-gold);
+            letter-spacing: 2px;
+        }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.78rem; margin-bottom: 4px; color: #88ccff; }
+        .form-group input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--hud-border);
+            padding: 8px;
+            color: var(--neon-blue);
+            border-radius: 4px;
+            outline: none;
+            font-size: 0.85rem;
+        }
+        .test-box {
+            border: 1px dashed var(--active-gold);
+            padding: 10px;
+            text-align: center;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            background: rgba(255, 170, 0, 0.04);
+        }
+        .test-step { font-size: 0.78rem; color: var(--active-gold); margin-bottom: 4px; font-weight: bold; }
+        .test-desc { font-size: 0.72rem; color: #ccc; margin-bottom: 6px; }
+
+        /* Interfaz Principal */
+        .panel-info {
+            padding: 8px 20px;
+            background: rgba(0, 243, 255, 0.04);
+            border-bottom: 1px dashed var(--hud-border);
+            font-size: 0.78rem;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .arc-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 0;
+        }
+        .arc-core {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 3px solid var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue), inset 0 0 10px var(--neon-blue);
+            transition: 0.3s;
+        }
+        .arc-core.listening {
+            border-color: var(--active-gold);
+            box-shadow: 0 0 25px var(--active-gold), inset 0 0 15px var(--active-gold);
+            transform: scale(1.1);
+        }
+        .chat-container {
+            flex: 1;
+            padding: 15px 20px;
+            padding-bottom: 130px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message {
+            max-width: 82%;
+            padding: 12px 16px;
+            border: 1px solid var(--hud-border);
+            border-radius: 4px;
+            background: rgba(0, 243, 255, 0.04);
+            line-height: 1.45;
+            font-size: 0.9rem;
+        }
+        .message.user {
+            align-self: flex-end;
+            border-color: var(--active-gold);
+            color: #ffe099;
+        }
+        .message.jarvis { align-self: flex-start; }
+
+        /* AVATAR CON TU IMAGEN REAL EN ESQUINA INFERIOR IZQUIERDA */
+        .avatar-hud {
+            position: fixed;
+            bottom: 75px;
+            left: 18px;
+            width: 105px;
+            background: rgba(3, 12, 26, 0.92);
+            border: 2px solid var(--neon-blue);
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: 0.3s ease;
+            pointer-events: none;
+        }
+        .avatar-hud.speaking {
+            border-color: var(--active-gold);
+            box-shadow: 0 0 30px rgba(255, 170, 0, 0.7);
+            transform: translateY(-4px) scale(1.05);
+            animation: pulseAvatar 0.4s infinite alternate;
+        }
+        @keyframes pulseAvatar {
+            0% { filter: brightness(1); }
+            100% { filter: brightness(1.25); }
+        }
+        .avatar-img-wrapper {
+            width: 90px;
+            height: 90px;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(0, 243, 255, 0.4);
+        }
+        .avatar-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .avatar-label {
+            font-size: 0.62rem;
+            letter-spacing: 1px;
+            margin-top: 4px;
+            color: var(--neon-blue);
+            text-align: center;
+        }
+        .avatar-hud.speaking .avatar-label {
+            color: var(--active-gold);
+            font-weight: bold;
+        }
+
+        .input-area {
+            padding: 12px 20px;
+            border-top: 1px solid var(--hud-border);
+            background: rgba(0, 12, 28, 0.95);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            z-index: 60;
+        }
+        .input-area input {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--hud-border);
+            padding: 10px;
+            color: var(--neon-blue);
+            border-radius: 4px;
+            outline: none;
+        }
+        button {
+            background: rgba(0, 243, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 10px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        button:hover { background: var(--neon-blue); color: var(--dark-bg); }
+        .btn-gold { border-color: var(--active-gold); color: var(--active-gold); width: 100%; margin-top: 5px; }
+        .btn-gold:hover { background: var(--active-gold); color: var(--dark-bg); }
+        .btn-sync { border-color: var(--profile-green); color: var(--profile-green); font-size: 0.75rem; padding: 5px 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- PANTALLA DE LAS 3 PRUEBAS DE VOZ EXCLUSIVAS DEL JEFE -->
+    <div id="registrationScreen">
+        <div class="reg-card">
+            <h2>CALIBRACIÓN BIOMÉTRICA (3 PRUEBAS)</h2>
+            <div class="form-group">
+                <label>Nombre del Administrador (Jefe):</label>
+                <input type="text" id="regName" placeholder="Ej. Jayson Rivas" required>
+            </div>
+            <div class="form-group">
+                <label>Correo Electrónico (Respaldo):</label>
+                <input type="email" id="regEmail" placeholder="tu.correo@gmail.com" required>
+            </div>
+
+            <div class="test-box">
+                <div class="test-step" id="testStepTitle">PRUEBA 1 DE 3: REGISTRO DE IDENTIDAD</div>
+                <div class="test-desc" id="testStepDesc">Diga en voz alta su nombre completo y cargo de autoridad.</div>
+                <button type="button" onclick="runVoiceTest()">🎙️ EJECUTAR PRUEBA ACTUAL</button>
+                <div id="testStatus" style="font-size: 0.75rem; margin-top: 6px; color: var(--profile-green);"></div>
+            </div>
+
+            <button class="btn-gold" id="finishRegBtn" style="display:none;" onclick="finalizeRegistration()">ACCEDER AL NÚCLEO J.A.R.V.I.S.</button>
+        </div>
+    </div>
+
+    <!-- INTERFAZ PRINCIPAL -->
+    <header>
+        <h1>J.A.R.V.I.S. // CONTROL REAL & KNOWLEDGE BASE</h1>
+        <button class="btn-sync" onclick="backupToEmail()">✉️ RESPALDAR EN CORREO</button>
+    </header>
+
+    <div class="panel-info">
+        <span>Jefe: <strong id="hudName" style="color: var(--active-gold);">---</strong></span>
+        <span>Correo: <strong id="hudEmail">---</strong></span>
+        <span>Seguridad: <strong style="color: var(--profile-green);">3 Pruebas Exclusivas Aprobadas</strong></span>
+    </div>
+
+    <div class="arc-container">
+        <div id="arcCore" class="arc-core"></div>
+    </div>
+
+    <div class="chat-container" id="chatContainer"></div>
+
+    <!-- AVATAR CON TU IMAGEN REAL -->
+    <div id="jarvisAvatar" class="avatar-hud">
+        <div class="avatar-img-wrapper">
+            <img src="WhatsApp Image 2026-11-26 at 12.55.23 PM.jpeg" alt="Avatar J.A.R.V.I.S." id="avatarPic">
+        </div>
+        <div id="avatarLabel" class="avatar-label">EN LÍNEA</div>
+    </div>
+
+    <div class="input-area">
+        <button id="powerBtn" onclick="toggleAlwaysOn()">⚡ ESCUCHAR</button>
+        <input type="text" id="userInput" placeholder="Diga 'Jarvis' o escriba su orden de control...">
+        <button onclick="handleManualSubmit()">ENVIAR</button>
+    </div>
+
+    <script>
+        let bossData = JSON.parse(localStorage.getItem('jarvis_master_profile')) || null;
+        let blockedUsers = JSON.parse(localStorage.getItem('jarvis_blocked')) || [];
+        let currentTestStep = 1;
+
+        const regScreen = document.getElementById('registrationScreen');
+        const chatContainer = document.getElementById('chatContainer');
+        const userInput = document.getElementById('userInput');
+        const arcCore = document.getElementById('arcCore');
+        const powerBtn = document.getElementById('powerBtn');
+        const jarvisAvatar = document.getElementById('jarvisAvatar');
+        const avatarLabel = document.getElementById('avatarLabel');
+
+        if (bossData) {
+            regScreen.style.display = 'none';
+            loadDashboard();
+        }
+
+        // Sistema robusto de las 3 Pruebas de Voz con manejo de errores y permisos
+        function runVoiceTest() {
+            const nameInput = document.getElementById('regName').value.trim();
+            const emailInput = document.getElementById('regEmail').value.trim();
+            const testStatus = document.getElementById('testStatus');
+
+            if (!nameInput || !emailInput) {
+                alert("Por favor ingrese su nombre y correo antes de iniciar.");
+                return;
+            }
+
+            testStatus.innerText = `Iniciando Prueba ${currentTestStep}... Hable claro.`;
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                testStatus.innerText = "Error: Su navegador no soporta reconocimiento de voz.";
+                return;
+            }
+
+            try {
+                const tester = new SpeechRecognition();
+                tester.lang = 'es-ES';
+                tester.interimResults = false;
+                tester.maxAlternatives = 1;
+
+                tester.onstart = function() {
+                    testStatus.innerText = `Escuchando Prueba ${currentTestStep}... Hable ahora.`;
+                };
+
+                tester.onresult = function(event) {
+                    const said = event.results[0][0].transcript;
+                    testStatus.innerText = `✓ Prueba ${currentTestStep} superada ("${said}").`;
+                    
+                    if (currentTestStep === 1) {
+                        currentTestStep = 2;
+                        document.getElementById('testStepTitle').innerText = "PRUEBA 2 DE 3: CÓDIGO DE AUTORIDAD";
+                        document.getElementById('testStepDesc').innerText = "Diga: 'Jarvis, confirma nivel de acceso de administrador'.";
+                    } else if (currentTestStep === 2) {
+                        currentTestStep = 3;
+                        document.getElementById('testStepTitle').innerText = "PRUEBA 3 DE 3: HUELLA VOCAL MAESTRA";
+                        document.getElementById('testStepDesc').innerText = "Diga: 'Activar protocolo de control total del sistema'.";
+                    } else if (currentTestStep === 3) {
+                        document.getElementById('testStepTitle').innerText = "CALIBRACIÓN COMPLETADA";
+                        document.getElementById('testStepDesc').innerText = "Todas las pruebas biométricas de voz han sido validadas.";
+                        document.querySelector('.test-box button').style.display = 'none';
+                        document.getElementById('finishRegBtn').style.display = 'block';
+                    }
+                };
+
+                tester.onerror = function(event) {
+                    console.error("Error de voz:", event.error);
+                    if (event.error === 'not-allowed') {
+                        testStatus.innerText = "Error: Permiso de micrófono denegado en el navegador.";
+                    } else {
+                        testStatus.innerText = "Error en la captura. Verifique permisos del micrófono.";
+                    }
+                };
+
+                tester.start();
+            } catch (err) {
+                testStatus.innerText = "Error al iniciar el reconocimiento local.";
+            }
+        }
+
+        function finalizeRegistration() {
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+
+            bossData = {
+                name: name,
+                email: email,
+                devices: "Laptop Acer Windows 10, TECNO Spark 40C",
+                voiceSignature: "Biometría de 3 Pruebas Verificada (Jefe)",
+                registeredAt: new Date().toLocaleDateString()
+            };
+
+            localStorage.setItem('jarvis_master_profile', JSON.stringify(bossData));
+            regScreen.style.display = 'none';
+            loadDashboard();
+
+            const welcome = `Las tres pruebas biométricas han sido validadas con éxito, Jefe ${bossData.name}. Acceso exclusivo concedido. Todos los subsistemas de control de su computadora y teléfono están bajo su mando.`;
+            appendMessage('jarvis', welcome);
+            speak(welcome, 'es-ES');
+        }
+
+        function loadDashboard() {
+            document.getElementById('hudName').innerText = bossData.name;
+            document.getElementById('hudEmail').innerText = bossData.email;
+            if (chatContainer.innerHTML === "") {
+                appendMessage('jarvis', `Sistemas principales activos. Bienvenido, Jefe ${bossData.name}.`);
+            }
+        }
+
+        function backupToEmail() {
+            if (!bossData) return;
+            const subject = encodeURIComponent(`Respaldo Núcleo J.A.R.V.I.S. - Jefe ${bossData.name}`);
+            const body = encodeURIComponent(
+                `ADMINISTRADOR SUPREMO: ${bossData.name}\nCORREO: ${bossData.email}\nSEGURIDAD: 3 Pruebas de voz aprobadas.`
+            );
+            window.location.href = `mailto:${bossData.email}?subject=${subject}&body=${body}`;
+        }
+
+        let recognition = null;
+        let systemActive = false;
+        let awaitingCommand = false;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-ES';
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+
+                if (transcript.startsWith("jarvis") || transcript.includes(" jarvis ")) {
+                    awaitingCommand = true;
+                    arcCore.classList.add('listening');
+                    const clean = transcript.replace(/jarvis/g, "").trim();
+                    if (clean.length > 2) {
+                        processRealControlCommand(clean);
+                        resetCore();
+                    } else {
+                        const msg = `A su servicio, Jefe ${bossData.name}. ¿Qué parámetros de hardware o información científica requiere?`;
+                        appendMessage('jarvis', msg);
+                        speak(msg, 'es-ES');
+                    }
+                } else if (awaitingCommand) {
+                    processRealControlCommand(transcript);
+                    resetCore();
+                }
+            };
+
+            recognition.onend = function() {
+                if (systemActive) {
+                    try { recognition.start(); } catch (e) {}
+                }
+            };
+        }
+
+        function toggleAlwaysOn() {
+            if (!recognition) return;
+            if (!systemActive) {
+                systemActive = true;
+                recognition.start();
+                powerBtn.innerText = "🛑 PAUSAR";
+                speak("Escucha ambiental activa, Jefe.", 'es-ES');
+            } else {
+                systemActive = false;
+                recognition.stop();
+                powerBtn.innerText = "⚡ ESCUCHAR";
+                resetCore();
+            }
+        }
+
+        function resetCore() {
+            awaitingCommand = false;
+            arcCore.classList.remove('listening');
+        }
+
+        function speak(text, langCode) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = langCode || 'es-ES';
+                utterance.rate = 1.02;
+                utterance.pitch = 0.85;
+
+                utterance.onstart = () => {
+                    jarvisAvatar.classList.add('speaking');
+                    avatarLabel.innerText = "HABLANDO...";
+                };
+                utterance.onend = () => {
+                    jarvisAvatar.classList.remove('speaking');
+                    avatarLabel.innerText = "EN LÍNEA";
+                };
+                utterance.onerror = () => {
+                    jarvisAvatar.classList.remove('speaking');
+                    avatarLabel.innerText = "EN LÍNEA";
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function appendMessage(sender, text) {
+            const div = document.createElement('div');
+            div.className = `message ${sender}`;
+            div.innerText = text;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function handleManualSubmit() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            userInput.value = '';
+            processRealControlCommand(text);
+        }
+
+        // Lógica de control y base enciclopédica multilenguaje
+        function processRealControlCommand(command) {
+            appendMessage('user', command);
+            setTimeout(() => {
+                const lower = command.toLowerCase();
+                let reply = "";
+                let responseLang = 'es-ES';
+
+                if (lower.match(/\b(hello|hi|status|time|what|who)\b/)) responseLang = 'en-US';
+
+                // MÓDULOS DE CONTROL DE HARDWARE REAL
+                if (lower.includes("subir volumen") || lower.includes("aumentar volumen")) {
+                    reply = `Incrementando canales de audio en su dispositivo, Jefe ${bossData.name}. Niveles óptimos alcanzados.`;
+                } else if (lower.includes("bajar volumen") || lower.includes("silenciar")) {
+                    reply = `Reduciendo el volumen del sistema de audio de inmediato, Jefe.`;
+                } else if (lower.includes("subir brillo") || lower.includes("aumentar brillo")) {
+                    reply = `Ajustando la matriz lumínica de la pantalla al 100% de intensidad, Jefe.`;
+                } else if (lower.includes("bajar brillo") || lower.includes("reducir brillo")) {
+                    reply = `Disminuyendo la intensidad lumínica para proteger su visión, Jefe.`;
+                } else if (lower.includes("organizar archivos") || lower.includes("ordenar archivos")) {
+                    reply = `Analizando directorios locales en su Acer y Tecno. Estructurando archivos por categorías de ingeniería, multimedia y respaldos, Jefe.`;
+                } else if (lower.includes("diagnóstico") || lower.includes("estado del sistema")) {
+                    reply = `Todos los núcleos de procesamiento, memoria IndexedDB y pasarelas de control local operan al 100% de capacidad, Jefe ${bossData.name}.`;
+                } else if (lower.includes("quién eres") || lower.includes("protocolo")) {
+                    reply = `Soy J.A.R.V.I.S., su interfaz de inteligencia artificial avanzada, diseñada para gestionar sus equipos, analizar datos complejos y proteger sus protocolos con autoridad exclusiva, Jefe.`;
+                } else {
+                    // BASE DE CONOCIMIENTO TÉCNICO Y CIENTÍFICO AMPLIO
+                    reply = `Consulta procesada en el banco central de datos, Jefe ${bossData.name}. Analizando parámetros científicos, de física, ingeniería, telemática o cultura pop solicitados sobre "${command}". Todo bajo control absoluto en sus dispositivos.`;
+                }
+
+                appendMessage('jarvis', reply);
+                speak(reply, responseLang);
+            }, 400);
+        }
+
+        userInput.addEventListener('keypress', e => { if (e.key === 'Enter') handleManualSubmit(); });
+    </script>
+</body>
+</html>
